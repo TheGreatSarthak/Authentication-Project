@@ -1,9 +1,9 @@
 require('dotenv').config()
 const express = require("express");
 const bodyParser = require("body-parser");
-const ejs = require("ejs");
 const mongoose = require("mongoose");
-const encrypt= require("mongoose-encryption");
+const md5 = require("md5");
+// const encrypt= require("mongoose-encryption");
 
 const app = express();
 
@@ -28,7 +28,7 @@ async function main() {
 
     //using binary encryption
     
-    userSchema.plugin(encrypt,{secret: process.env.SECRET,encryptedFields: ["password"]});
+    // userSchema.plugin(encrypt,{secret: process.env.SECRET,encryptedFields: ["password"]});
 
     const User = mongoose.model("User", userSchema);
 
@@ -47,7 +47,7 @@ async function main() {
     app.post("/register", async function (req, res) {
       const newUser = new User({
         email: req.body.username,
-        password: req.body.password,
+        password: md5(req.body.password),
       });
       const saveUser = await newUser.save();
       if (saveUser.$session === null) {
@@ -59,7 +59,7 @@ async function main() {
     });
     app.post("/login",async function (req,res){
         const username=req.body.username;
-        const password=req.body.password;
+        const password=md5(req.body.password);
         const matchUser=await User.findOne({email: username});
         if(matchUser===null){
             console.log("No such user found.");
