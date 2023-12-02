@@ -1,8 +1,10 @@
-require('dotenv').config()
+require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-const md5 = require("md5");
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
+// const md5 = require("md5");
 // const encrypt= require("mongoose-encryption");
 
 const app = express();
@@ -27,7 +29,7 @@ async function main() {
     });
 
     //using binary encryption
-    
+
     // userSchema.plugin(encrypt,{secret: process.env.SECRET,encryptedFields: ["password"]});
 
     const User = mongoose.model("User", userSchema);
@@ -45,33 +47,37 @@ async function main() {
     });
 
     app.post("/register", async function (req, res) {
-      const newUser = new User({
-        email: req.body.username,
-        password: md5(req.body.password),
-      });
-      const saveUser = await newUser.save();
-      if (saveUser.$session === null) {
-        res.send("User not added! Try Again...");
-      } else {
-        //res.send("Successfully added a new user.");
-        res.render("secrets");
-      }
-    });
-    app.post("/login",async function (req,res){
-        const username=req.body.username;
-        const password=md5(req.body.password);
-        const matchUser=await User.findOne({email: username});
-        if(matchUser===null){
-            console.log("No such user found.");
+      bcrypt.hash(req.body.password, saltRounds, async function (err, hash) {
+        const newUser = new User({
+          email: req.body.username,
+          password: hash,
+        });
+        const saveUser = await newUser.save();
+        if (saveUser.$session === null) {
+          res.send("User not added! Try Again...");
         } else {
-            if(matchUser.password===password){
-                res.render("secrets");
-            }
-            else {
-                console.log("Enter correct password.");
-            }
-        
+          //res.send("Successfully added a new user.");
+          res.render("secrets");
         }
+      });
+    });
+    app.post("/login", async function (req, res) {
+      
+      const username = req.body.username;
+      const password = req.body.password;
+      const matchUser = await User.findOne({ email: username });
+      
+      if (matchUser === null) {
+        console.log("No such user found.");
+      } else {
+        bcrypt.compare(password, matchUser.password, function(err, result) {
+          if (result === true) {
+            res.render("secrets");
+          } else {
+            console.log(err);
+          }
+        });
+      }
     });
 
     app.listen(3000, function () {
